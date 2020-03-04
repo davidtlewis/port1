@@ -1,0 +1,19 @@
+{% extends 'portfolio/base.html' %}
+{% block content %}
+        <h1>The Portfolio App</h1>
+        <h2>Grand total {{ totals.account_value__sum }}</h2>
+        <table>
+            <tr><th>Acount</th>
+            <th>Person</th>
+            <th>Value</th>
+            </tr>
+            
+            {% for account in accounts %}
+            <tr>
+                <td><a href="/account/{{ account.id}}">{{ account.name }}</a></td>
+                <td>{{account.person}}</td>
+                <td> {{account.account_value}}</td>
+                </tr>
+            {% endfor %}
+        </table>
+{% endblock %}

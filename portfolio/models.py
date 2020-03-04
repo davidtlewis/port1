@@ -6,8 +6,14 @@ import locale
 from django.utils import timezone
 from django.urls import reverse
 
+class Person(models.Model):
+    name = models.CharField(max_length=50)
+    def __str__(self):
+        return self.name
+    
 class Account(models.Model):
     name = models.CharField(max_length=50)
+    person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
     ACCOUNT_TYPE = (
         ('ISA','ISA'),
         ('pension', 'PENSION'),

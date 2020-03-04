@@ -1,6 +1,9 @@
 from django.contrib import admin
 
-from .models import Transaction, Stock, Account, Price, Holding
+from .models import Transaction, Stock, Account, Price, Holding, Person
+
+class PersonAdmin(admin.ModelAdmin):
+    list_display = ('name',)
 
 class TransactionInline(admin.TabularInline):
     model = Transaction
@@ -11,7 +14,7 @@ class HoldingInline(admin.TabularInline):
     extra = 1
 
 class AccountAdmin(admin.ModelAdmin):
-    list_display = ('account_type','name','account_value')
+    list_display = ('account_type','person','name','account_value')
     inlines = [HoldingInline,TransactionInline]
 
 class PriceAdmin(admin.ModelAdmin):
@@ -34,6 +37,7 @@ class StockAdmin(admin.ModelAdmin):
     #list_editable = ('nickname',)
 
 
+admin.site.register(Person, PersonAdmin)
 
 admin.site.register(Account, AccountAdmin)
     

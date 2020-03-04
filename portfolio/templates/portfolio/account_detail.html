@@ -5,11 +5,15 @@
         <p>Value: {{account.account_value}}</p>
         <p>Value: {{account.account_type}}</p>
         <table>
+            <tr><th>Stock</th>
+            <th>Volume</th>
+            <th>Value</th>
+            </tr>
             {% for h in account.holding_set.all %}
                 <tr>
                     <td><a href="{{ h.get_absolute_url }}">{{ h.stock }}</a> </td>
-                    <td>volume: {{h.volume }} </td>
-                    <td>value: {{h.current_value}} </td>
+                    <td> {{h.volume }} </td>
+                    <td> {{h.current_value}} </td>
                    
                 </tr>   
              {% endfor %}

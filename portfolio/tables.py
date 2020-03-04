@@ -35,5 +35,5 @@ class AccountTable(tables.Table):
     class Meta:
         model = Account
         template_name = "django_tables2/bootstrap.html"
-        fields = ('name','account_type','account_value')
+        fields = ('name','person','account_type','account_value')
     name = tables.LinkColumn("account_detail", args=[A("pk")])
