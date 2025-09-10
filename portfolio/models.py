@@ -84,7 +84,7 @@ class Stock(models.Model):
     scraper_source = models.CharField(max_length=5, choices=SCRAPER_SOURCE, default='ft')
     
     active = models.BooleanField(default=True)
-    current_price = models.DecimalField(max_digits=7, decimal_places=4)
+    current_price = models.DecimalField(max_digits=8, decimal_places=4)
     price_updated = models.DateTimeField(null=True)
     perf_5y = models.DecimalField(max_digits=7, decimal_places=2, null=True)
     perf_3y = models.DecimalField(max_digits=7, decimal_places=2, null=True)
@@ -112,7 +112,7 @@ class Stock(models.Model):
             if self.scraper_source == 'ft':
                 baseurl1 = "https://markets.ft.com/data/"
                 baseurl2 = {
-                    "etfs":"etfs/tearsheet/performance?s=",
+                    "etfs":"etfs/tearsheet/summary?s=",
                     "fund":"funds/tearsheet/performance?s=",
                     "equity":"equities/tearsheet/summary?s=",
                     "curr":"currencies/tearsheet/summary?s="
