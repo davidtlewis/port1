@@ -132,8 +132,11 @@ class Stock(models.Model):
                     print("!!!WARNING: Scrape fail")
                     scrapped_current_price = ""
                     current_price = self.current_price
+                  
+
             else:
-                # if self.stock_type == 'etfs' or self.stock_type =='curr':
+                #the yahoo scraper is not working ; the shows unavailable to this scaper
+                # # if self.stock_type == 'etfs' or self.stock_type =='curr':
                 url = "https://finance.yahoo.com/quote/" + self.yahoo_code
                 session = HTMLSession() # trying new library to get more reliable scrapes
                 print(f"Calling URL: {url}")
@@ -141,7 +144,8 @@ class Stock(models.Model):
                 contents = page.content
                 soup = BeautifulSoup(contents, 'html.parser')
                 #scrapped_element =  soup.find("fin-streamer", attrs={"data-reactid": "29"})
-                scrapped_element =  soup.find("fin-streamer", attrs={"data-symbol": self.yahoo_code, "data-field": 'regularMarketPrice'})
+                #scrapped_element =  soup.find("fin-streamer", attrs={"data-symbol": self.yahoo_code, "data-field": 'regularMarketPrice'})
+                scrapped_element =  soup.find("span", attrs={"data-testid": "qsp-price"})
                 if scrapped_element is not None:
                         scrapped_current_price = scrapped_element.string
                         current_price = locale.atof(scrapped_current_price)
