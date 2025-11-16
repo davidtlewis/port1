@@ -1,14 +1,17 @@
+import logging
 import locale
 import time
 from datetime import datetime, date, timedelta
+from decimal import Decimal
 from django.db import models
-from django.db.models import Sum
-#import requests
-from requests_html import HTMLSession
-
-from bs4 import BeautifulSoup
+from django.db.models import Sum, Q
 from django.utils import timezone
 from django.urls import reverse
+from requests_html import HTMLSession
+from bs4 import BeautifulSoup
+from .scraper import PriceScraper, PerformanceScraper, ScraperException
+
+logger = logging.getLogger(__name__)
 
 class Account(models.Model):
     """ this holds the accounts"""
@@ -103,96 +106,109 @@ class Stock(models.Model):
         return reverse('stock_detail', args=[str(self.id)])
 
     def refresh_value(self):
-        locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
-        # locale.setlocale(locale.LC_ALL, 'en_GB.utf8')
-        # locale.setlocale(locale.LC_ALL, '')
-        # self.current_price = 0
-        if self.active==True and self.code != 'none':
-            print(f"Refreshing  {self.nickname}.")
+        """
+        Refresh the current price of the stock from external source.
+        Updates current_price and price_updated timestamp.
+        Falls back to previous price if scraping fails.
+        Also refreshes related holding values.
+        """
+        if not self.active or self.code == 'none':
+            logger.debug(f"Skipping refresh for {self.nickname} - not active or code is 'none'")
+            return
+        
+        logger.info(f"Refreshing price for {self.nickname}")
+        
+        try:
+            locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+        except locale.Error:
+            logger.warning("Failed to set locale, using default")
+        
+        current_price = None
+        
+        try:
+            scraper = PriceScraper()
+            
             if self.scraper_source == 'ft':
-                baseurl1 = "https://markets.ft.com/data/"
-                baseurl2 = {
-                    "etfs":"etfs/tearsheet/summary?s=",
-                    "fund":"funds/tearsheet/performance?s=",
-                    "equity":"equities/tearsheet/summary?s=",
-                    "curr":"currencies/tearsheet/summary?s="
-                }
-                url = baseurl1 + baseurl2[self.stock_type] + self.code
-                session = HTMLSession() # trying new library to get more reliable scrapes
-                print(f"Calling URL: {url}")
-                page = session.get(url)
-                contents = page.content
-                soup = BeautifulSoup(contents, 'html.parser')
-                scrapped_element = soup.find_all("span", class_='mod-ui-data-list__value')[0].string
-                if scrapped_element is not None:
-                        scrapped_current_price = scrapped_element.string
-                        current_price = locale.atof(scrapped_current_price)
-                else:
-                    print(soup)
-                    print("!!!WARNING: Scrape fail")
-                    scrapped_current_price = ""
-                    current_price = self.current_price
-                  
-
+                current_price = scraper.scrape_ft_price(self.code, self.stock_type)
+            elif self.scraper_source == 'yahoo':
+                if not self.yahoo_code:
+                    logger.warning(f"No Yahoo code set for {self.nickname}")
+                    return
+                current_price = scraper.scrape_yahoo_price(self.yahoo_code)
             else:
-                #the yahoo scraper is not working ; the shows unavailable to this scaper
-                # # if self.stock_type == 'etfs' or self.stock_type =='curr':
-                url = "https://finance.yahoo.com/quote/" + self.yahoo_code
-                session = HTMLSession() # trying new library to get more reliable scrapes
-                print(f"Calling URL: {url}")
-                page = session.get(url)
-                contents = page.content
-                soup = BeautifulSoup(contents, 'html.parser')
-                #scrapped_element =  soup.find("fin-streamer", attrs={"data-reactid": "29"})
-                #scrapped_element =  soup.find("fin-streamer", attrs={"data-symbol": self.yahoo_code, "data-field": 'regularMarketPrice'})
-                scrapped_element =  soup.find("span", attrs={"data-testid": "qsp-price"})
-                if scrapped_element is not None:
-                        scrapped_current_price = scrapped_element.string
-                        current_price = locale.atof(scrapped_current_price)
-                else:
-                    print(soup)
-                    print("!!!WARNING: Scrape fail")
-                    scrapped_current_price = ""
-                    current_price = self.current_price
-            print(f"Calling URL: {url}. Returned string value {scrapped_current_price}.")
+                logger.error(f"Unknown scraper source: {self.scraper_source}")
+                return
+            
+            if current_price is None:
+                logger.warning(f"Scraper returned None for {self.nickname}")
+                return
+            
+            # Handle GBX (pence) to GBP (pounds) conversion
             if self.currency == 'gbx':
-                current_price = current_price / 100
-            self.current_price = current_price
-            self.price_updated = timezone.now()
-            self.save()
-        #now to refresh  holdings which contain this stock
-        related_holdings = Holding.objects.filter(stock=self)
-        for h in related_holdings:
-            h.refresh_value()
+                current_price = current_price / Decimal('100')
+            
+            # Only update if price is valid
+            if current_price > 0:
+                self.current_price = current_price
+                self.price_updated = timezone.now()
+                self.save()
+                logger.info(f"Updated {self.nickname}: {current_price} (updated at {self.price_updated})")
+            else:
+                logger.warning(f"Invalid price {current_price} for {self.nickname}")
+        
+        except ScraperException as e:
+            logger.error(f"Failed to refresh price for {self.nickname}: {e}")
+            # Keep existing price rather than crashing
+        
+        except Exception as e:
+            logger.error(f"Unexpected error refreshing {self.nickname}: {e}", exc_info=True)
+        
+        finally:
+            # Always refresh holdings that contain this stock
+            self._refresh_related_holdings()
+    
+    def _refresh_related_holdings(self):
+        """Refresh values of all holdings that contain this stock"""
+        try:
+            related_holdings = Holding.objects.filter(stock=self)
+            for holding in related_holdings:
+                holding.refresh_value()
+        except Exception as e:
+            logger.error(f"Error refreshing holdings for {self.nickname}: {e}")
+
 
     def refresh_perf(self):
-        locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
-        baseurl1 = "https://markets.ft.com/data/"
-        baseurl2 = {
-            "etfs":"etfs/tearsheet/performance?s=",
-            "fund":"funds/tearsheet/performance?s=",
-            "equity":"equities/tearsheet/summary?s="
-        }
-        if self.stock_type != 'equity' and self.stock_type != 'curr':
-            url = baseurl1 + baseurl2[self.stock_type] + self.code
-            session = HTMLSession() # trying new library to get more reliable scrapes
-            page = session.get(url)
-            #page = requests.get(url)
-            contents = page.content
-            soup = BeautifulSoup(contents, 'html.parser')
-            scrapped_5y_perf = soup.find("div", class_='mod-ui-table--freeze-pane__scroll-container').find_all("tr")[1].find_all("td")[1].string
-            if scrapped_5y_perf != '--': self.perf_5y = locale.atof(scrapped_5y_perf[:-1])
-            scrapped_3y_perf = soup.find("div", class_='mod-ui-table--freeze-pane__scroll-container').find_all("tr")[1].find_all("td")[2].string
-            if scrapped_3y_perf != '--': self.perf_3y = locale.atof(scrapped_3y_perf[:-1])
-            scrapped_1y_perf = soup.find("div", class_='mod-ui-table--freeze-pane__scroll-container').find_all("tr")[1].find_all("td")[3].string
-            if scrapped_1y_perf != '--': self.perf_1y = locale.atof(scrapped_1y_perf[:-1])
-            scrapped_6m_perf = soup.find("div", class_='mod-ui-table--freeze-pane__scroll-container').find_all("tr")[1].find_all("td")[4].string
-            if scrapped_6m_perf != '--': self.perf_6m = locale.atof(scrapped_6m_perf[:-1])
-            scrapped_3m_perf = soup.find("div", class_='mod-ui-table--freeze-pane__scroll-container').find_all("tr")[1].find_all("td")[5].string
-            if scrapped_3m_perf != '--': self.perf_3m = locale.atof(scrapped_3m_perf[:-1])
-            scrapped_1m_perf = soup.find("div", class_='mod-ui-table--freeze-pane__scroll-container').find_all("tr")[1].find_all("td")[6].string
-            if scrapped_1m_perf != '--': self.perf_1m = locale.atof(scrapped_1m_perf[:-1])
+        """
+        Refresh performance data (5y, 3y, 1y, 6m, 3m, 1m returns) from Financial Times.
+        Only available for funds and ETFs, not for equities or currencies.
+        """
+        if self.stock_type not in ('fund', 'etfs'):
+            logger.debug(f"Performance data not available for {self.stock_type}")
+            return
+        
+        logger.info(f"Refreshing performance for {self.nickname}")
+        
+        try:
+            locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+        except locale.Error:
+            logger.warning("Failed to set locale, using default")
+        
+        try:
+            scraper = PerformanceScraper()
+            perf_data = scraper.scrape_performance(self.code, self.stock_type)
+            
+            # Update each performance field
+            for field_name, value in perf_data.items():
+                setattr(self, field_name, value)
+            
             self.save()
+            logger.info(f"Updated performance for {self.nickname}: {perf_data}")
+        
+        except ScraperException as e:
+            logger.error(f"Failed to refresh performance for {self.nickname}: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error refreshing performance for {self.nickname}: {e}", exc_info=True)
+
                
     def get_historic_prices(self):
         #broken - might need to implement all this cookie stuff to fix access to yahoo - https://maikros.github.io/yahoo-finance-python/
@@ -326,18 +342,39 @@ class Holding(models.Model):
         return reverse('holding_detail', args=[str(self.id)])
 
     def refresh_value(self):
-        #sum up all relevant tranaction to get current number of shares
-        transactions = Transaction.objects.filter(stock=self.stock).filter(account=self.account)
-        nett_volume_bought = transactions.filter(transaction_type='buy').aggregate(Sum('volume'))['volume__sum']
-        if nett_volume_bought is None:
-            nett_volume_bought = 0
+        """
+        Refresh holding value based on:
+        1. Current transaction history (bought - sold)
+        2. Current stock price
+        
+        Optimized to use single aggregation query instead of N+1 queries.
+        """
+        try:
+            # Single efficient query to get buy/sell volumes
+            transactions = Transaction.objects.filter(
+                stock=self.stock,
+                account=self.account
+            ).aggregate(
+                bought=Sum('volume', filter=Q(transaction_type='buy')),
+                sold=Sum('volume', filter=Q(transaction_type='sell'))
+            )
+            
+            nett_volume_bought = transactions['bought'] or 0
+            nett_volume_sold = transactions['sold'] or 0
+            self.volume = nett_volume_bought - nett_volume_sold
+            
+            # Get fresh stock price from database
+            stock = Stock.objects.get(pk=self.stock.id)
+            self.current_value = Decimal(str(stock.current_price)) * Decimal(str(self.volume))
+            self.value_updated = timezone.now()
+            self.save()
+            
+            logger.debug(f"Updated holding {self.id}: volume={self.volume}, value={self.current_value}")
+        
+        except Stock.DoesNotExist:
+            logger.error(f"Stock {self.stock.id} not found for holding {self.id}")
+            raise
+        except Exception as e:
+            logger.error(f"Error refreshing holding {self.id}: {e}", exc_info=True)
+            raise
 
-        nett_volume_sold = transactions.filter(transaction_type='sell').aggregate(Sum('volume'))['volume__sum']
-        if nett_volume_sold is None:
-            nett_volume_sold = 0
-
-        self.volume = nett_volume_bought - nett_volume_sold
-        #self.current_value = Price.objects.filter(stock=self.stock).latest('date').price * self.volume
-        self.current_value = Stock.objects.get(pk=self.stock.id).current_price * self.volume
-        self.value_updated = timezone.now()
-        self.save()

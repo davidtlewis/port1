@@ -1,8 +1,52 @@
+# Python bytecode
 *.pyc
+*.pyo
+*.pyd
+
+# Editor backup files
 *~
-/.vscode
-__pycache__
-myvenv
+
+# VSCode
+.vscode/
+
+# Pycache
+__pycache__/
+
+# Virtual environments
+myvenv/
+venv/
+env/
+.venv/
+
+# Django
+db.sqlite3
 /static
+staticfiles/
+/media
+
+# Environment variables / secrets
+.env
+.env.*
+
+# Logs
+logs/
+*.log
+
+# IDEs
+.idea/
+
+# macOS
 .DS_Store
-/.env
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Misc
+*.swp
+*.swo
