@@ -13,7 +13,7 @@ from .forms import TransactionForm, CommandForm
 from django.shortcuts import redirect
 from django.core import management
 from django.contrib.auth.decorators import login_required
-from .filters import HoldingByAccountFilter, HoldingByAccountFilter2, TransactionFilter, HistoricPriceByStockFilter, DividendByStockFilter, StockListFilter
+from .filters import HoldingByAccountFilter, HoldingByAccountFilter2, TransactionFilter, HistoricPriceByStockFilter, DividendByStockFilter, StockListFilter, AccountFilter
 from datetime import datetime, date
 import time
 from django_tables2 import RequestConfig
@@ -85,6 +85,13 @@ class TransactionListViewFiltered(SingleTableMixin, FilterView):
 class AccountListView(SingleTableView):
     model = Account
     table_class = AccountTable
+    template_name = 'portfolio/account.html'
+
+class AccountListViewFiltered(ExportMixin,SingleTableMixin, FilterView):
+    model = Account
+    table_class = AccountTable
+    filterset_class = AccountFilter
+    # queryset  = Account.objects.all().filter(account_value__gt=0)
     template_name = 'portfolio/account.html'
 
 def detailed_summary(request):
