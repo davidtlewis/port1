@@ -100,7 +100,7 @@ def detailed_summary(request):
     #accounts_by_type = Account.objects.values('account_type').annotate(total_value=Sum('account_value'))
     a = Account.objects.filter(person__name = "david") | Account.objects.filter(person__name = "henri")
     accounts_by_type = a.values('account_type').annotate(total_value=Sum('account_value'))
-    accounts_by_person = Account.objects.values('person__name').annotate(total_value=Sum('account_value')).order_by('person__name')
+    accounts_by_person = Account.objects.values('person__name','person__id').annotate(total_value=Sum('account_value')).order_by('person__name')
     return render(request, 'portfolio/detailedsummary.html', {
     'totals': totals, 'accounts':accounts, 'accounts_by_type': accounts_by_type, 'accounts_by_person': accounts_by_person,
     }, )
@@ -157,10 +157,10 @@ def command(request):
 
             if do_get_prices:
                 management.call_command('get_prices')
-            if do_refresh_accounts:
-                management.call_command('refresh_accounts')
             if do_refresh_holdings:
                 management.call_command('refresh_holdings')
+            if do_refresh_accounts:
+                management.call_command('refresh_accounts')
             if do_get_perf:
                 management.call_command('get_perf')
             if do_get_history:

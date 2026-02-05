@@ -76,7 +76,7 @@ class AccountTable(tables.Table):
     class Meta:
         model = Account
         template_name = "django_tables2/bootstrap.html"
-        fields = ('person','account_type','name','account_value')
+        fields = ('name', 'person','account_type','account_value')
         order_by = '-person'
     name = tables.LinkColumn("holdingsfiltered")
     def render_name(self, record):

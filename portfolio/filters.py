@@ -34,4 +34,4 @@ class StockListFilter(django_filters.FilterSet):
 class AccountFilter(django_filters.FilterSet):
     class Meta:
         model = Account
-        fields = ['account_type','person',]
+        fields = ['person','account_type']

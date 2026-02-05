@@ -1,7 +1,7 @@
 {% extends 'portfolio/base.html' %}
 {% load tz %}
 {% block content %}
-<h1>Summary at {{updateTime}}</h1>
+<h1>Summary at {{ updateTime|localtime|date:"D jS, P" }}</h1>
 <h2>total: {{ totalvalue |floatformat:0 }}</h2>
 <h2>total USD: {{ totalvalueUSD |floatformat:0 }}</h2>
 
