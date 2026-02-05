@@ -20,7 +20,7 @@
         <ul class="sidebar-nav">
           <li><a href="{% url 'index' %}">Home</a></li>
           <li><a href="{% url 'refresh' %}">Refresh  </a><a href="{% url 'refresh' %}" target="_blank"> -></a></li>
-          <li><a href="{% url 'detail' %}">Summary</a></li>
+          <!-- <li><a href="{% url 'detail' %}">Summary</a></li> -->
           <li><a href="{% url 'accountsfiltered' %}">Accounts</a></li>
           <li><a href="{% url 'holdingsfiltered' %}">Holdings</a></li>
           <li><a href="{% url 'stockholdingsummary' %}">Total Stock Holdings</a></li>
@@ -31,6 +31,10 @@
           <!-- <li><a href="{% url 'dividends' %}">Dividends</a></li> -->
           <li><a href="{% url 'commandform' %}">Commands</a></li>
           <li><a href="/admin">admin</a></li>
+          <li><a href="https://www.direct.aviva.co.uk/MyAccount/login" target="_blank"> Henri Pension</a></li>
+          <li><a href="https://finance.yahoo.com/quote/GBPUSD%3DX?p=GBPUSD%3DX" target="_blank">GBP/USD</a></li>
+          <li><a href="https://www.iweb-sharedealing.co.uk/" target="_blank">iWeb</a></li>
+
           {% if user.is_authenticated %}
           <li><a href="{% url 'logout' %}">Logout</a></li> 
           {% else %}

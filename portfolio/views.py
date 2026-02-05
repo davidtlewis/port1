@@ -203,9 +203,14 @@ def summary(request):
     totalvalue = total['account_value__sum']
     totalUSD = 0
     pensions = Account.objects.filter(account_type = "pension") 
-    #a = Account.objects.filter(person__name = "david").exclude(account_type = "pension") | Account.objects.filter(person__name = "henri").exclude(account_type = "pension")
-    accounts_by_type = a.values('account_type').annotate(total_value=Sum('account_value'))
-    
+    # accounts_by_type = a.values('account_type').annotate(total_value=Sum('account_value'))
+    totals = Account.objects.aggregate(Sum('account_value'))
+    accounts = Account.objects.all()
+    #accounts_by_type = Account.objects.values('account_type').annotate(total_value=Sum('account_value'))
+    b = Account.objects.filter(person__name = "david") | Account.objects.filter(person__name = "henri")
+    accounts_by_type = b.values('account_type').annotate(total_value=Sum('account_value'))
+    accounts_by_person = Account.objects.values('person__name','person__id').annotate(total_value=Sum('account_value')).order_by('person__name')
+
     return render(request, 'portfolio/summary.html', {
       'total': total,
       'totalvalue': totalvalue,
@@ -215,4 +220,5 @@ def summary(request):
       'pensions':pensions, 
       'accounts_by_type': accounts_by_type, 
       'updateTime': updateTime,
+      'totals': totals, 'accounts':accounts, 'accounts_by_type': accounts_by_type, 'accounts_by_person': accounts_by_person,
     }, )
