@@ -1,7 +1,7 @@
 {% extends 'portfolio/base.html' %}
 {% load tz %}
 {% block content %}
-<h3>Summary @ {{ updateTime|localtime|date:"D jS, P" }}</h3>
+<h3>Summary @ {{ updateTime|localtime|date:"D jS, H:i" }}</h3>
 <h4>H&D tot: £{{ totalvalue |floatformat:0 }}  US${{ totalvalueUSD |floatformat:0 }}</h4>
 <h4>All total: £ {{ totals.account_value__sum |floatformat:0 }}</h4>
 {% comment %} <button id="copybtn">Copy</button><br>
