@@ -82,3 +82,9 @@ class AccountTable(tables.Table):
     def render_name(self, record):
         url = reverse('holdingsfiltered')
         return format_html('<a href="{}?account={}">{}</a>', url, record.id, record.name)
+    
+class HoldingTransactionsTable(tables.Table):
+    class Meta:
+        model = Holding
+        template_name = "django_tables2/bootstrap.html"
+        fields = ('transaction_type','date', 'volume','price')

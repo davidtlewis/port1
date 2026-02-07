@@ -1,31 +1,13 @@
 {% extends 'portfolio/base.html' %}
+{% load render_table from django_tables2 %}
+{% load bootstrap4 %}
 {% block content %}
-        <h2>Holding</h2>
-        <p>Account: {{object.account}}</p>
-        <p>Stock: {{object.stock}}</p>
+        <h2>Holding:  {{object.account}} :  {{object.stock}}</h2>
         <p>Volume: {{object.volume}}</p>
         <p>Cost: {{object.book_cost}}</p>
         <p>Value: {{object.current_value}}</p>
         <p>When updated: {{object.value_updated}}</p>
-        <table>
-                <tr>
-                        <th>Transaction Date</th>
-                        <th>Transaction Type<th>Transaction Type</th>
-                        <th>Transaction Type</th>
-                        
-                        <th>Purchase Price</th>
-                        <th>Volume</th>
-                        <th>Transaction Cost</th>
-                </tr>
-        {% for t in transaction_list %}
-                <tr>
-                    <td><a href="{{ t.get_absolute_url }}">{{ t.date }}</a> </td>
-                    
-                    <td>{{ t.transaction_type }}</td>
-                    <td>{{ t.price }}</td>
-                    <td>{{ t.volume }}</td>
-                    <td>{{ t.tcost }}</td>
-                </tr>
-             {% endfor %}
-        </table>
+
+        {% render_table table %}
+
 {% endblock %}

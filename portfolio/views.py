@@ -7,7 +7,7 @@ from django_tables2.views import SingleTableMixin
 from django_tables2.export.views import ExportMixin
 from django_filters.views import FilterView
 from .models import Stock, Price, Holding, Transaction, Account, HistoricPrice, Dividend
-from .tables import StockTable, HoldingTable, TransactionTable, PriceTable, AccountTable, HistoricPriceTable, DividendTable, StockHoldingTable, StockListTable
+from .tables import StockTable, HoldingTable, TransactionTable, PriceTable, AccountTable, HistoricPriceTable, DividendTable, StockHoldingTable, StockListTable, HoldingTransactionsTable
 from django.db.models import Sum
 from .forms import TransactionForm, CommandForm
 from django.shortcuts import redirect
@@ -116,11 +116,13 @@ class TransactionDetailView(DetailView):
 class HoldingDetailView(DetailView):
     model = Holding
     template_name = 'portfolio/holding_detail.html'
-
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         transaction_list = Transaction.objects.filter(account=self.object.account).filter(stock=self.object.stock)
-        context['transaction_list'] = transaction_list
+        table = HoldingTransactionsTable(transaction_list)
+        RequestConfig(self.request).configure(table) 
+        context['table'] = table
         return context
 
 class StockDetailView(DetailView):
