@@ -197,30 +197,38 @@ def summary_old(request):
     }, )
 
 def summary(request):
-    a = Account.objects.filter(person__name = "david") | Account.objects.filter(person__name = "henri")
     stock_currencies = Stock.objects.filter(stock_type = "curr")
     USDGBP = stock_currencies[0].current_price
     updateTime = stock_currencies[0].price_updated
-    total = a.aggregate(Sum('account_value'))
-    totalvalue = total['account_value__sum']
-    totalUSD = 0
+
+    a = Account.objects.filter(person__name = "david") | Account.objects.filter(person__name = "henri")
+    HDaccounts_by_type = a.values('account_type').annotate(total_value=Sum('account_value'))
+    HDtotal = a.aggregate(Sum('account_value'))
+    HDtotalvalue = HDtotal['account_value__sum']
+    
     pensions = Account.objects.filter(account_type = "pension") 
-    # accounts_by_type = a.values('account_type').annotate(total_value=Sum('account_value'))
+    
+
     totals = Account.objects.aggregate(Sum('account_value'))
-    accounts = Account.objects.all()
-    #accounts_by_type = Account.objects.values('account_type').annotate(total_value=Sum('account_value'))
-    b = Account.objects.filter(person__name = "david") | Account.objects.filter(person__name = "henri")
-    accounts_by_type = b.values('account_type').annotate(total_value=Sum('account_value'))
+    totalUSD = totals['account_value__sum'] * USDGBP
+ 
+    
     accounts_by_person = Account.objects.values('person__name','person__id').annotate(total_value=Sum('account_value')).order_by('person__name')
 
+
+# accounts_by_type = a.values('account_type').annotate(total_value=Sum('account_value'))
+    # accounts = Account.objects.all()
+    #accounts_by_type = Account.objects.values('account_type').annotate(total_value=Sum('account_value'))
+    
+
     return render(request, 'portfolio/summary.html', {
-      'total': total,
-      'totalvalue': totalvalue,
+      'HDtotalvalue': HDtotalvalue,
+      'HDtotalvalueUSD': (HDtotalvalue * USDGBP),
       'USDGBP': USDGBP, 
-      'totalvalueUSD': (totalvalue * USDGBP),
-      'totalUSD': totalUSD, 
+      'totals': totals, 
+      'totalvalueUSD': totalUSD, 
       'pensions':pensions, 
-      'accounts_by_type': accounts_by_type, 
+      'HDaccounts_by_type': HDaccounts_by_type, 
       'updateTime': updateTime,
-      'totals': totals, 'accounts':accounts, 'accounts_by_type': accounts_by_type, 'accounts_by_person': accounts_by_person,
+      'accounts_by_person': accounts_by_person,
     }, )
