@@ -6,14 +6,20 @@
     <tr>
         <td width="70px"><h4>H&D</h4></td>
         <td width="150px"><h4>£{{ HDtotalvalue |floatformat:0 }}</h4></td>
-        <td><h4>${{ HDtotalvalueUSD |floatformat:0 }}</h4></td>
+        <td width="150px"><h4>${{ HDtotalvalueUSD |floatformat:0 }}</h4></td>
+        <td width="160px"><h4>Idx: {{ HDtotalvalueCurrencyIndex |floatformat:0 }}</h4></td>
     </tr>
     <tr>
         <td><h4>All</h4></td>
         <td><h4>£{{ totals.account_value__sum |floatformat:0 }}</h4></td>
-        <td><h4>${{ totalvalueUSD |floatformat:0 }}</td>
+        <td><h4>${{ totalvalueUSD |floatformat:0 }}</h4></td>
+        <td><h4>Idx: {{ totalvalueCurrencyIndex |floatformat:0 }}</h4></td>
     </tr>
 </table>
+<p style="font-size: 0.9em; color: #666;">
+    Exchange rates: GBP/USD = {{ USDGBP|floatformat:4 }} | Currency Index = {{ currencyIndex|floatformat:2 }}
+    {% if currencyIndexUpdateTime %}(updated {{ currencyIndexUpdateTime|localtime|date:"D jS, H:i" }}){% endif %}
+</p>
 {% comment %} <button id="copybtn">Copy</button><br>
 <button id="demo" onclick="copyToClipboard(document.getElementById('copytextarea').innerHTML)">This is what I want to
     copy</button> {% endcomment %}

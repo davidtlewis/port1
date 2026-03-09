@@ -197,38 +197,60 @@ def summary_old(request):
     }, )
 
 def summary(request):
-    stock_currencies = Stock.objects.filter(stock_type = "curr")
-    USDGBP = stock_currencies[0].current_price
-    updateTime = stock_currencies[0].price_updated
+    # Get the primary GBP/USD exchange rate currency stock
+    try:
+        # Get the GBPUSD currency stock
+        usd_gbp_stock = Stock.objects.get(stock_type="curr", nickname="GBPUSD")
+        USDGBP = usd_gbp_stock.current_price if usd_gbp_stock else 1
+        updateTime = usd_gbp_stock.price_updated if usd_gbp_stock else None
+    except Stock.DoesNotExist:
+        # Fallback if no currency stocks exist
+        USDGBP = 1
+        updateTime = None
+
+    # Get the GBP Currency Index for global value perspective
+    try:
+        currency_index_stock = Stock.objects.get(stock_type="curr", nickname="GBP Currency Index")
+        currencyIndex = currency_index_stock.current_price if currency_index_stock else 1
+        currencyIndexUpdateTime = currency_index_stock.price_updated if currency_index_stock else None
+    except Stock.DoesNotExist:
+        # Fallback if currency index doesn't exist
+        currencyIndex = 1
+        currencyIndexUpdateTime = None
 
     a = Account.objects.filter(person__name = "david") | Account.objects.filter(person__name = "henri")
     HDaccounts_by_type = a.values('account_type').annotate(total_value=Sum('account_value'))
     HDtotal = a.aggregate(Sum('account_value'))
     HDtotalvalue = HDtotal['account_value__sum']
-    
-    pensions = Account.objects.filter(account_type = "pension") 
-    
+
+    pensions = Account.objects.filter(account_type = "pension")
+
 
     totals = Account.objects.aggregate(Sum('account_value'))
     totalUSD = totals['account_value__sum'] * USDGBP
- 
-    
+    totalCurrencyIndex = totals['account_value__sum'] * currencyIndex
+
+
     accounts_by_person = Account.objects.values('person__name','person__id').annotate(total_value=Sum('account_value')).order_by('person__name')
 
 
 # accounts_by_type = a.values('account_type').annotate(total_value=Sum('account_value'))
     # accounts = Account.objects.all()
     #accounts_by_type = Account.objects.values('account_type').annotate(total_value=Sum('account_value'))
-    
+
 
     return render(request, 'portfolio/summary.html', {
       'HDtotalvalue': HDtotalvalue,
       'HDtotalvalueUSD': (HDtotalvalue * USDGBP),
-      'USDGBP': USDGBP, 
-      'totals': totals, 
-      'totalvalueUSD': totalUSD, 
-      'pensions':pensions, 
-      'HDaccounts_by_type': HDaccounts_by_type, 
+      'HDtotalvalueCurrencyIndex': (HDtotalvalue * currencyIndex),
+      'USDGBP': USDGBP,
+      'currencyIndex': currencyIndex,
+      'totals': totals,
+      'totalvalueUSD': totalUSD,
+      'totalvalueCurrencyIndex': totalCurrencyIndex,
+      'pensions':pensions,
+      'HDaccounts_by_type': HDaccounts_by_type,
       'updateTime': updateTime,
+      'currencyIndexUpdateTime': currencyIndexUpdateTime,
       'accounts_by_person': accounts_by_person,
     }, )

@@ -378,3 +378,91 @@ class Holding(models.Model):
             logger.error(f"Error refreshing holding {self.id}: {e}", exc_info=True)
             raise
 
+
+class DailySnapshot(models.Model):
+    """
+    Daily portfolio snapshot taken at market close (5pm).
+    Stores total portfolio values and exchange rates for historical tracking.
+    """
+    date = models.DateField(unique=True, db_index=True)
+    snapshot_time = models.DateTimeField(auto_now_add=True)
+
+    # Total portfolio values
+    total_value_gbp = models.DecimalField(max_digits=12, decimal_places=2)
+    total_value_usd = models.DecimalField(max_digits=12, decimal_places=2)
+    total_value_currency_index = models.DecimalField(max_digits=15, decimal_places=2)
+
+    # H&D (David & Henri) portfolio values
+    hd_value_gbp = models.DecimalField(max_digits=12, decimal_places=2)
+    hd_value_usd = models.DecimalField(max_digits=12, decimal_places=2)
+    hd_value_currency_index = models.DecimalField(max_digits=15, decimal_places=2)
+
+    # Exchange rates at snapshot time
+    gbp_usd_rate = models.DecimalField(max_digits=8, decimal_places=4)
+    currency_index_rate = models.DecimalField(max_digits=8, decimal_places=4)
+
+    class Meta:
+        ordering = ['-date']
+        verbose_name = 'Daily Snapshot'
+        verbose_name_plural = 'Daily Snapshots'
+
+    def __str__(self):
+        return f"Portfolio Snapshot - {self.date}"
+
+    @classmethod
+    def create_snapshot(cls, snapshot_date=None):
+        """
+        Create a daily snapshot for the given date (defaults to today).
+        Returns the created snapshot or None if it already exists.
+        """
+        if snapshot_date is None:
+            snapshot_date = date.today()
+
+        # Check if snapshot already exists for this date
+        if cls.objects.filter(date=snapshot_date).exists():
+            logger.warning(f"Snapshot for {snapshot_date} already exists")
+            return None
+
+        # Get exchange rates
+        try:
+            usd_gbp_stock = Stock.objects.get(stock_type="curr", nickname="GBPUSD")
+            gbp_usd_rate = usd_gbp_stock.current_price
+        except Stock.DoesNotExist:
+            logger.error("GBPUSD stock not found")
+            gbp_usd_rate = Decimal('1.0')
+
+        try:
+            currency_index_stock = Stock.objects.get(stock_type="curr", nickname="GBP Currency Index")
+            currency_index_rate = currency_index_stock.current_price
+        except Stock.DoesNotExist:
+            logger.error("GBP Currency Index stock not found")
+            currency_index_rate = Decimal('1.0')
+
+        # Calculate total portfolio values
+        totals = Account.objects.aggregate(Sum('account_value'))
+        total_gbp = totals['account_value__sum'] or Decimal('0')
+        total_usd = total_gbp * gbp_usd_rate
+        total_currency_index = total_gbp * currency_index_rate
+
+        # Calculate H&D portfolio values
+        hd_accounts = Account.objects.filter(person__name="david") | Account.objects.filter(person__name="henri")
+        hd_totals = hd_accounts.aggregate(Sum('account_value'))
+        hd_gbp = hd_totals['account_value__sum'] or Decimal('0')
+        hd_usd = hd_gbp * gbp_usd_rate
+        hd_currency_index = hd_gbp * currency_index_rate
+
+        # Create snapshot
+        snapshot = cls.objects.create(
+            date=snapshot_date,
+            total_value_gbp=total_gbp,
+            total_value_usd=total_usd,
+            total_value_currency_index=total_currency_index,
+            hd_value_gbp=hd_gbp,
+            hd_value_usd=hd_usd,
+            hd_value_currency_index=hd_currency_index,
+            gbp_usd_rate=gbp_usd_rate,
+            currency_index_rate=currency_index_rate,
+        )
+
+        logger.info(f"Created daily snapshot for {snapshot_date}: GBP £{total_gbp:,.2f}, USD ${total_usd:,.2f}")
+        return snapshot

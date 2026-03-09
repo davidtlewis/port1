@@ -1,6 +1,6 @@
 from datetime import datetime
 from django.contrib import admin
-from .models import Transaction, Stock, Account, Price, Holding, Person, HistoricPrice, Dividend
+from .models import Transaction, Stock, Account, Price, Holding, Person, HistoricPrice, Dividend, DailySnapshot
 
 
 class TransactionInline(admin.TabularInline):
@@ -68,6 +68,15 @@ class PersonAdmin(admin.ModelAdmin):
     list_display = ('name', )
 
 
+class DailySnapshotAdmin(admin.ModelAdmin):
+    list_display = ('date', 'total_value_gbp', 'total_value_usd', 'total_value_currency_index',
+                    'hd_value_gbp', 'hd_value_usd', 'hd_value_currency_index',
+                    'gbp_usd_rate', 'currency_index_rate', 'snapshot_time')
+    list_filter = ('date', )
+    readonly_fields = ('snapshot_time',)
+    ordering = ('-date',)
+
+
 admin.site.register(Account, AccountAdmin)
 admin.site.register(Person, PersonAdmin)
 admin.site.register(Price, PriceAdmin)
@@ -76,3 +85,4 @@ admin.site.register(Dividend, DividendAdmin)
 admin.site.register(Holding, HoldingAdmin)
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(Stock, StockAdmin)
+admin.site.register(DailySnapshot, DailySnapshotAdmin)
