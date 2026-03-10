@@ -2,11 +2,12 @@ from django.shortcuts import render
 from django.urls import path, reverse
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views.generic import DetailView
+from django.core.paginator import Paginator
 from django_tables2 import SingleTableView
 from django_tables2.views import SingleTableMixin
 from django_tables2.export.views import ExportMixin
 from django_filters.views import FilterView
-from .models import Stock, Price, Holding, Transaction, Account, HistoricPrice, Dividend
+from .models import Stock, Price, Holding, Transaction, Account, HistoricPrice, Dividend, DailySnapshot
 from .tables import StockTable, HoldingTable, TransactionTable, PriceTable, AccountTable, HistoricPriceTable, DividendTable, StockHoldingTable, StockListTable, HoldingTransactionsTable
 from django.db.models import Sum
 from .forms import TransactionForm, CommandForm
@@ -254,3 +255,16 @@ def summary(request):
       'currencyIndexUpdateTime': currencyIndexUpdateTime,
       'accounts_by_person': accounts_by_person,
     }, )
+
+
+def daily_snapshots(request):
+    snapshots = DailySnapshot.objects.all()
+    paginator = Paginator(snapshots, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'portfolio/daily_snapshots.html', {
+        'snapshots': page_obj.object_list,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+    })
