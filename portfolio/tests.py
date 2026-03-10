@@ -1,10 +1,21 @@
 from datetime import date
 from decimal import Decimal
 
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from portfolio.models import DailySnapshot
+from portfolio.templatetags.portfolio_extras import signed_thousands_k, thousands_k
+
+
+class PortfolioExtrasTests(SimpleTestCase):
+    def test_thousands_k_formats_values(self):
+        self.assertEqual(thousands_k(7144894), '7,145k')
+
+    def test_signed_thousands_k_formats_positive_and_negative_values(self):
+        self.assertEqual(signed_thousands_k(12345), '+12k')
+        self.assertEqual(signed_thousands_k(-12345), '-12k')
+        self.assertEqual(signed_thousands_k(0), '0k')
 
 
 class DailySnapshotsViewTests(TestCase):

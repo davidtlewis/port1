@@ -231,6 +231,23 @@ def summary(request):
     totalUSD = totals['account_value__sum'] * USDGBP
     totalCurrencyIndex = totals['account_value__sum'] * currencyIndex
 
+    previous_snapshot = DailySnapshot.objects.filter(date__lt=date.today()).first()
+
+    hd_value_gbp_change = None
+    hd_value_usd_change = None
+    hd_value_currency_index_change = None
+    total_value_gbp_change = None
+    total_value_usd_change = None
+    total_value_currency_index_change = None
+
+    if previous_snapshot:
+        hd_value_gbp_change = HDtotalvalue - previous_snapshot.hd_value_gbp
+        hd_value_usd_change = (HDtotalvalue * USDGBP) - previous_snapshot.hd_value_usd
+        hd_value_currency_index_change = (HDtotalvalue * currencyIndex) - previous_snapshot.hd_value_currency_index
+        total_value_gbp_change = totals['account_value__sum'] - previous_snapshot.total_value_gbp
+        total_value_usd_change = totalUSD - previous_snapshot.total_value_usd
+        total_value_currency_index_change = totalCurrencyIndex - previous_snapshot.total_value_currency_index
+
 
     accounts_by_person = Account.objects.values('person__name','person__id').annotate(total_value=Sum('account_value')).order_by('person__name')
 
@@ -249,6 +266,13 @@ def summary(request):
       'totals': totals,
       'totalvalueUSD': totalUSD,
       'totalvalueCurrencyIndex': totalCurrencyIndex,
+      'previous_snapshot': previous_snapshot,
+      'HDtotalvalueChange': hd_value_gbp_change,
+      'HDtotalvalueUSDChange': hd_value_usd_change,
+      'HDtotalvalueCurrencyIndexChange': hd_value_currency_index_change,
+      'totalvalueChange': total_value_gbp_change,
+      'totalvalueUSDChange': total_value_usd_change,
+      'totalvalueCurrencyIndexChange': total_value_currency_index_change,
       'pensions':pensions,
       'HDaccounts_by_type': HDaccounts_by_type,
       'updateTime': updateTime,

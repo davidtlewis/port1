@@ -10,24 +10,38 @@
     </tr>
     <tr>
         <th>GBP</th>
-        <td>£{{ HDtotalvalue|thousands_k }}</td>
-        <td>£{{ totals.account_value__sum|thousands_k }}</td>
+        <td>
+            £{{ HDtotalvalue|thousands_k }}{% if previous_snapshot %} ({{ HDtotalvalueChange|signed_thousands_k }}){% endif %}
+        </td>
+        <td>
+            £{{ totals.account_value__sum|thousands_k }}{% if previous_snapshot %} ({{ totalvalueChange|signed_thousands_k }}){% endif %}
+        </td>
     </tr>
     <tr>
         <th>USD</th>
-        <td>${{ HDtotalvalueUSD|thousands_k }}</td>
-        <td>${{ totalvalueUSD|thousands_k }}</td>
+        <td>
+            ${{ HDtotalvalueUSD|thousands_k }}{% if previous_snapshot %} ({{ HDtotalvalueUSDChange|signed_thousands_k }}){% endif %}
+        </td>
+        <td>
+            ${{ totalvalueUSD|thousands_k }}{% if previous_snapshot %} ({{ totalvalueUSDChange|signed_thousands_k }}){% endif %}
+        </td>
     </tr>
     <tr>
         <th>Index</th>
-        <td>{{ HDtotalvalueCurrencyIndex|thousands_k }}</td>
-        <td>{{ totalvalueCurrencyIndex|thousands_k }}</td>
+        <td>
+            {{ HDtotalvalueCurrencyIndex|thousands_k }}{% if previous_snapshot %} ({{ HDtotalvalueCurrencyIndexChange|signed_thousands_k }}){% endif %}
+        </td>
+        <td>
+            {{ totalvalueCurrencyIndex|thousands_k }}{% if previous_snapshot %} ({{ totalvalueCurrencyIndexChange|signed_thousands_k }}){% endif %}
+        </td>
     </tr>
 </table>
 <p style="font-size: 0.9em; color: #666;">
     Exchange rates: GBP/USD = {{ USDGBP|floatformat:4 }} | Currency Index = {{ currencyIndex|floatformat:2 }}
-    
 </p>
+{% if previous_snapshot %}
+<p style="font-size: 0.9em; color: #666;">Bracketed changes are versus {{ previous_snapshot.date|date:"D jS M" }}.</p>
+{% endif %}
 {% comment %} <button id="copybtn">Copy</button><br>
 <button id="demo" onclick="copyToClipboard(document.getElementById('copytextarea').innerHTML)">This is what I want to
     copy</button> {% endcomment %}
