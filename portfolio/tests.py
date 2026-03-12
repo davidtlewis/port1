@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
-from portfolio.models import DailySnapshot
+from portfolio.models import DailySnapshot, Transaction
 from portfolio.templatetags.portfolio_extras import signed_thousands_k, thousands_k
 
 
@@ -16,6 +16,19 @@ class PortfolioExtrasTests(SimpleTestCase):
         self.assertEqual(signed_thousands_k(12345), '+12k')
         self.assertEqual(signed_thousands_k(-12345), '-12k')
         self.assertEqual(signed_thousands_k(0), '0k')
+
+
+class TransactionModelFieldTests(SimpleTestCase):
+    def test_transaction_price_matches_stock_price_precision(self):
+        field = Transaction._meta.get_field('price')
+
+        self.assertEqual(field.max_digits, 8)
+        self.assertEqual(field.decimal_places, 4)
+
+    def test_transaction_tcost_default_is_five_pounds(self):
+        field = Transaction._meta.get_field('tcost')
+
+        self.assertEqual(field.default, Decimal('5.00'))
 
 
 class DailySnapshotsViewTests(TestCase):

@@ -288,8 +288,8 @@ class Transaction(models.Model):
     date = models.DateField()
     stock = models.ForeignKey(Stock, on_delete=models.CASCADE, null=True)
     volume = models.IntegerField()
-    price = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    tcost = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    price = models.DecimalField(max_digits=8, decimal_places=4, default=0)
+    tcost = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('5.00'))
 
     class Meta:
         ordering = ['-date']
