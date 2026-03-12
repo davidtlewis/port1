@@ -37,11 +37,11 @@
     </tr>
 </table>
 <p style="font-size: 0.9em; color: #666;">
-    Exchange rates: GBP/USD = {{ USDGBP|floatformat:4 }} | Currency Index = {{ currencyIndex|floatformat:2 }}
-</p>
+    GBP/USD = {{ USDGBP|floatformat:4 }} | GBP Idx = {{ currencyIndex|floatformat:2 }} |
+
 {% if previous_snapshot %}
-<p style="font-size: 0.9em; color: #666;">Bracketed changes are versus {{ previous_snapshot.date|date:"D jS M" }}.</p>
-{% endif %}
+(changes) vs {{ previous_snapshot.date|date:"D jS" }}.</p>
+{% endif %}</p>
 {% comment %} <button id="copybtn">Copy</button><br>
 <button id="demo" onclick="copyToClipboard(document.getElementById('copytextarea').innerHTML)">This is what I want to
     copy</button> {% endcomment %}
