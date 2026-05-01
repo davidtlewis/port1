@@ -7,14 +7,14 @@ from django_tables2 import SingleTableView
 from django_tables2.views import SingleTableMixin
 from django_tables2.export.views import ExportMixin
 from django_filters.views import FilterView
-from .models import Stock, Price, Holding, Transaction, Account, HistoricPrice, Dividend, DailySnapshot
-from .tables import StockTable, HoldingTable, TransactionTable, PriceTable, AccountTable, HistoricPriceTable, DividendTable, StockHoldingTable, StockListTable, HoldingTransactionsTable
+from .models import Stock, Price, Holding, Transaction, Account, Dividend, DailySnapshot
+from .tables import StockTable, HoldingTable, TransactionTable, PriceTable, AccountTable, DividendTable, StockHoldingTable, StockListTable, HoldingTransactionsTable
 from django.db.models import Sum
 from .forms import TransactionForm, CommandForm
 from django.shortcuts import redirect
 from django.core import management
 from django.contrib.auth.decorators import login_required
-from .filters import HoldingByAccountFilter, HoldingByAccountFilter2, TransactionFilter, HistoricPriceByStockFilter, DividendByStockFilter, StockListFilter, AccountFilter
+from .filters import HoldingByAccountFilter, HoldingByAccountFilter2, TransactionFilter, DividendByStockFilter, StockListFilter, AccountFilter
 from datetime import datetime, date
 import time
 from django_tables2 import RequestConfig
@@ -53,12 +53,6 @@ class HoldingListViewFiltered(ExportMixin,SingleTableMixin, FilterView):
     template_name = 'portfolio/holding.html'
     filterset_class = HoldingByAccountFilter
     queryset  = Holding.objects.all().filter(current_value__gt=0)
-
-class HistoricPriceListView(SingleTableMixin, FilterView):
-    model = HistoricPrice
-    table_class = HistoricPriceTable
-    template_name = 'portfolio/historicprice.html'
-    filterset_class = HistoricPriceByStockFilter
 
 class DividendListView(SingleTableMixin, FilterView):
     model = Dividend
@@ -155,7 +149,6 @@ def command(request):
             do_get_prices = form.cleaned_data['do_get_prices']
             do_refresh_accounts = form.cleaned_data['do_refresh_accounts']
             do_refresh_holdings = form.cleaned_data['do_refresh_holdings']
-            do_get_history = form.cleaned_data['do_get_history']
             do_get_perf = form.cleaned_data['do_get_perf']
 
             if do_get_prices:
@@ -166,12 +159,6 @@ def command(request):
                 management.call_command('refresh_accounts')
             if do_get_perf:
                 management.call_command('get_perf')
-            if do_get_history:
-                stocks = Stock.objects.all()
-                today = date.today()
-                for stock in stocks:
-                    stock.get_historic_prices()
-
         return HttpResponseRedirect(reverse('index') )
     else:
         form = CommandForm()

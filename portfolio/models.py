@@ -1,13 +1,11 @@
 import logging
 import locale
-import time
-from datetime import datetime, date, timedelta
+from datetime import date
 from decimal import Decimal
 from django.db import models
 from django.db.models import Sum, Q
 from django.utils import timezone
 from django.urls import reverse
-from requests_html import HTMLSession
 from bs4 import BeautifulSoup
 from .scraper import PriceScraper, PerformanceScraper, ScraperException
 
@@ -210,67 +208,6 @@ class Stock(models.Model):
             logger.error(f"Unexpected error refreshing performance for {self.nickname}: {e}", exc_info=True)
 
                
-    def get_historic_prices(self):
-        #broken - might need to implement all this cookie stuff to fix access to yahoo - https://maikros.github.io/yahoo-finance-python/
-        if not self.yahoo_code:
-            return
-        if self.yahoo_code == "none":
-            return
-        if self.active == False:
-            return
-        batch = 135
-        locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
-        def converttonumber(textin):
-            try:
-                return locale.atof(textin)
-            except ValueError:
-                return 0
-        today = date.today()
-        #find last date in historicPrices
-        last_date_record = HistoricPrice.objects.filter(stock=self).first()
-        if last_date_record is None:
-            #set default to 1 jan 2017
-            last_date = date(2017, 1, 1)
-        else:
-            last_date = last_date_record.date
-        print("Stock:", self.name, " Getting history from ", last_date, "to ", today,)
-        from_date = last_date + timedelta(days=1)
-        while from_date < today:
-            to_date = min((from_date + timedelta(days=batch)), today)
-            endunix = int(time.mktime(to_date.timetuple()))
-            startunix = int(time.mktime(from_date.timetuple()))
-            url = "https://uk.finance.yahoo.com/quote/" + self.yahoo_code + "/history?period1=" + str(startunix) + "&period2=" + str(endunix) + "&interval=1d&filter=history&frequency=1d"
-            
-            #page = requests.get(url)
-            session = HTMLSession()
-            page = session.get(url)
-            contents = page.content
-            soup = BeautifulSoup(contents, 'html.parser')
-            rows = soup.table.tbody.find_all("tr")
-            print("Stock:", self.name,"from:", from_date, " to :", to_date, ". Records returned: ", len(rows), ". ", url)
-            print ("rows", len(rows))
-            for table_row in rows:
-                columns = table_row.find_all("td")
-                print ("Columns: ", len(columns))
-                if len(columns) == 7:
-                    #save price record
-                    hp = HistoricPrice(stock=self, date=datetime.strptime(columns[0].text.upper().replace("SEPT", "SEP"), '%d %b %Y'), open=converttonumber(columns[1].text), high=converttonumber(columns[2].text), low=converttonumber(columns[3].text), close=converttonumber(columns[4].text), adjclose=converttonumber(columns[5].text))
-                    hp.save()
-                    #maybe use uniqueness of data to stop duplicate being added.
-                if len(columns) == 2:
-                    #save div record
-                    #amount_text = columns[1].strong.text
-                    amount_text = columns[1].span.text
-                    div = Dividend(stock=self, date=datetime.strptime(columns[0].text.upper().replace("SEPT", "SEP"), '%d %b %Y'), amount=converttonumber(amount_text))
-                    div.save()
-            #get ready for next loop
-            from_date = to_date + + timedelta(days=1)
-
-
-    def clear_historic_prices(self):
-        HistoricPrice.objects.filter(stock=self).delete()
-        Dividend.objects.filter(stock=self).delete()
-
 class Dividend(models.Model):
     stock = models.ForeignKey(Stock, on_delete=models.CASCADE, null=True)
     date = models.DateField(blank=True)
@@ -305,21 +242,6 @@ class Price(models.Model):
 
     class Meta:
         ordering = ['-date', 'stock']
-
-    def __str__(self):
-        return self.stock.name + " at " + str(self.date)
-
-class HistoricPrice(models.Model):
-    stock = models.ForeignKey(Stock, on_delete=models.CASCADE, null=True)
-    date = models.DateField(blank=True)
-    open = models.DecimalField(max_digits=7, decimal_places=2)
-    high = models.DecimalField(max_digits=7, decimal_places=2)
-    low = models.DecimalField(max_digits=7, decimal_places=2)
-    close = models.DecimalField(max_digits=7, decimal_places=2)
-    adjclose = models.DecimalField(max_digits=7, decimal_places=2)
-
-    class Meta:
-        ordering = ['-date']
 
     def __str__(self):
         return self.stock.name + " at " + str(self.date)

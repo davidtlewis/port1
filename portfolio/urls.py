@@ -1,6 +1,6 @@
 from django.urls import path
 from portfolio import views
-from portfolio.views import StockListView, PriceListView, TransactionListView, TransactionListViewFiltered, HoldingListView, HoldingListViewFiltered, AccountListView, AccountDetailView, HoldingDetailView, HistoricPriceListView, DividendListView, StockHoldingView, AccountListViewFiltered
+from portfolio.views import StockListView, PriceListView, TransactionListView, TransactionListViewFiltered, HoldingListView, HoldingListViewFiltered, AccountListView, AccountDetailView, HoldingDetailView, DividendListView, StockHoldingView, AccountListViewFiltered
 
 urlpatterns = [
     path("", views.summary, name="index"),
@@ -10,7 +10,6 @@ urlpatterns = [
     path("stocks/", StockListView.as_view(), name='stocks'),
     path("stockvolumes/", views.StockVolumesView, name='stockvolumes'),
     path("prices/", PriceListView.as_view(), name='prices'),
-    path("historicprices/", HistoricPriceListView.as_view(), name='historicprices'),
     path("dividends/", DividendListView.as_view(), name='dividends'),
     path("transactions/", TransactionListView.as_view(), name='transactions'),
     path("transactionsfiltered/", TransactionListViewFiltered.as_view(), name='transactionsfiltered'),

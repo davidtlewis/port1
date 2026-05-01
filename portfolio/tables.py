@@ -1,7 +1,7 @@
 import django_tables2 as tables
 from django.urls import reverse
 from django.utils.html import format_html
-from .models import Stock, Price, Holding, Transaction, Account, HistoricPrice, Dividend
+from .models import Stock, Price, Holding, Transaction, Account, Dividend
 from django_tables2 import A
 from django.db.models import Sum
 
@@ -43,12 +43,6 @@ class PriceTable(tables.Table):
         template_name = "django_tables2/bootstrap.html"
         #fields = ('price' ,)
         fields = ('stock','date', 'price')
-
-class HistoricPriceTable(tables.Table):
-    class Meta:
-        model = HistoricPrice
-        template_name = "django_tables2/bootstrap.html"
-        fields = ('date', 'stock', 'open', 'high', 'low', 'close', 'adjclose',  )
 
 class DividendTable(tables.Table):
     class Meta:

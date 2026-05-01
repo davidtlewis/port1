@@ -1,5 +1,5 @@
 import django_filters
-from .models import Stock, Transaction, Holding, HistoricPrice, Dividend, Account
+from .models import Stock, Transaction, Holding, Dividend, Account
 
 class TransactionFilter(django_filters.FilterSet):
     class Meta:
@@ -15,11 +15,6 @@ class HoldingByAccountFilter2(django_filters.FilterSet):
     class Meta:
         model = Holding
         fields = ['account']
-
-class HistoricPriceByStockFilter(django_filters.FilterSet):
-    class Meta:
-        model = HistoricPrice
-        fields = ['stock',]
 
 class DividendByStockFilter(django_filters.FilterSet):
     class Meta:

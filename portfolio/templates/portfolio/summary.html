@@ -37,14 +37,12 @@
     </tr>
 </table>
 <p style="font-size: 0.9em; color: #666;">
-    GBP/USD = {{ USDGBP|floatformat:4 }} | GBP Idx = {{ currencyIndex|floatformat:2 }} |
+    GBP/USD={{ USDGBP|floatformat:4 }} | GBP Idx={{ currencyIndex|floatformat:2 }} |
 
 {% if previous_snapshot %}
 (changes) vs {{ previous_snapshot.date|date:"D jS" }}.</p>
 {% endif %}</p>
-{% comment %} <button id="copybtn">Copy</button><br>
-<button id="demo" onclick="copyToClipboard(document.getElementById('copytextarea').innerHTML)">This is what I want to
-    copy</button> {% endcomment %}
+<button id="copybtn" class="btn btn-sm btn-outline-secondary mb-1">Copy values</button>
 <div id="copytextarea">
     {{HDaccounts_by_type.4.total_value}}<br>
     {{HDaccounts_by_type.3.total_value}}<br>
@@ -94,24 +92,14 @@
 {% block script %}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        document.querySelector('#copybtn').addEventListener('click', function (event) {
-            var copyTextarea = document.querySelector('#copytextarea');
-            copyTextarea.focus();
-            copyTextarea.select();
-
-            try {
-                var successful = document.execCommand('copy');
-                var msg = successful ? 'successful' : 'unsuccessful';
-                console.log('Copying text command was ' + msg);
-            } catch (err) {
-                console.log('Oops, unable to copy');
-            }
-        })
+        document.getElementById('copybtn').addEventListener('click', function () {
+            var btn = this;
+            var text = document.getElementById('copytextarea').innerText.trim();
+            navigator.clipboard.writeText(text).then(function () {
+                btn.textContent = 'Copied!';
+                setTimeout(function () { btn.textContent = 'Copy values'; }, 2000);
+            });
+        });
     });
-
-    function copyToClipboard(text) {
-        window.prompt("Copy to clipboard: Ctrl+C, Enter", text);
-    }
 </script>
-
 {% endblock %}

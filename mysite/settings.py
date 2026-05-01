@@ -32,7 +32,6 @@ USE_THOUSAND_SEPARATOR = True
 # Application definition
 
 INSTALLED_APPS = [
-    'learn.apps.LearnConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
