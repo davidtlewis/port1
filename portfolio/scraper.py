@@ -8,7 +8,6 @@ import time
 import locale
 from decimal import Decimal
 from typing import Optional, Tuple
-from requests_html import HTMLSession
 from bs4 import BeautifulSoup
 import requests
 
@@ -57,9 +56,8 @@ class PriceScraper:
         """Initialize scraper with logging"""
         self.session = None
     
-    def _create_session(self) -> HTMLSession:
-        """Create an HTMLSession with proper headers"""
-        session = HTMLSession()
+    def _create_session(self) -> requests.Session:
+        session = requests.Session()
         session.headers.update({'User-Agent': self.USER_AGENT})
         return session
     
@@ -297,9 +295,8 @@ class PerformanceScraper:
     def __init__(self):
         self.session = None
     
-    def _create_session(self) -> HTMLSession:
-        """Create an HTMLSession with proper headers"""
-        session = HTMLSession()
+    def _create_session(self) -> requests.Session:
+        session = requests.Session()
         session.headers.update({'User-Agent': self.USER_AGENT})
         return session
     

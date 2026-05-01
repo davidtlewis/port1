@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'debug_toolbar',
     'crispy_forms',
+    'crispy_bootstrap4',
     'django_filters',
     'bootstrap4',
 ]
@@ -134,9 +135,10 @@ TIME_ZONE = 'Europe/London'
 
 USE_I18N = True
 
-USE_L10N = True
-
 USE_TZ = True
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap4'
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'

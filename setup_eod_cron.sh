@@ -18,7 +18,7 @@ if [ "$USER" != "david" ]; then
 fi
 
 # Define the cron job
-CRON_JOB="0 17 * * 1-5 cd /home/david/port1 && /home/david/.env/django2/bin/python3 manage.py end_of_day_snapshot >> /home/david/port1/logs/eod_snapshot.log 2>&1"
+CRON_JOB="45 16 * * 1-5 /home/david/port1/.venv/bin/python3 /home/david/port1/manage.py end_of_day_snapshot >> /home/david/port1/logs/eod_snapshot.log 2>&1"
 
 echo "The following cron job will be added:"
 echo ""
