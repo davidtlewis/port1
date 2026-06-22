@@ -42,13 +42,24 @@
 {% if previous_snapshot %}
 (changes) vs {{ previous_snapshot.date|date:"D jS" }}.</p>
 {% endif %}</p>
-<button id="copybtn" class="btn btn-sm btn-outline-secondary mb-1">Copy values</button>
-<div id="copytextarea">
-    {{HDaccounts_by_type.4.total_value}}<br>
-    {{HDaccounts_by_type.3.total_value}}<br>
-    {{pensions.1.account_value}}<br>
-    {{USDGBP}}<br>
-    {{pensions.2.account_value}}<br>
+<button id="refreshbtn" class="btn btn-sm btn-outline-primary mb-1 mr-1" data-url="{% url 'refresh_stream' %}">Refresh Prices</button>
+<div id="refresh-progress" style="display:none; margin-top: 0.75rem; max-width: 520px;">
+    <div class="progress" style="height: 22px;">
+        <div id="refresh-bar" class="progress-bar progress-bar-striped progress-bar-animated"
+             role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+    </div>
+    <small id="refresh-status" class="text-muted mt-1 d-block"></small>
+</div>
+
+<div style="display: flex; align-items: flex-start; gap: 0.75rem; margin-top: 0.5rem;">
+    <div id="copytextarea">
+        {{HDaccounts_by_type.4.total_value}}<br>
+        {{HDaccounts_by_type.3.total_value}}<br>
+        {{pensions.1.account_value}}<br>
+        {{USDGBP}}<br>
+        {{pensions.2.account_value}}<br>
+    </div>
+    <button id="copybtn" class="btn btn-sm btn-outline-secondary">Copy values</button>
 </div>
 
 <!-- <a href="https://www.direct.aviva.co.uk/MyAccount/login" target="_blank"> Henri Pension</a>
@@ -99,6 +110,62 @@
                 btn.textContent = 'Copied!';
                 setTimeout(function () { btn.textContent = 'Copy values'; }, 2000);
             });
+        });
+
+        document.getElementById('refreshbtn').addEventListener('click', function () {
+            var btn = this;
+            var url = btn.getAttribute('data-url');
+            var panel = document.getElementById('refresh-progress');
+            var bar = document.getElementById('refresh-bar');
+            var status = document.getElementById('refresh-status');
+
+            btn.disabled = true;
+            btn.textContent = 'Refreshing...';
+            panel.style.display = 'block';
+            bar.style.width = '0%';
+            bar.textContent = '0%';
+            bar.className = 'progress-bar progress-bar-striped progress-bar-animated';
+            status.textContent = 'Starting...';
+
+            var es = new EventSource(url);
+
+            es.onmessage = function (e) {
+                var d = JSON.parse(e.data);
+
+                if (d.phase === 'prices') {
+                    if (d.done === 0) {
+                        status.textContent = d.message;
+                    } else {
+                        var pct = Math.round((d.done / d.total) * 100);
+                        bar.style.width = pct + '%';
+                        bar.textContent = pct + '%';
+                        bar.setAttribute('aria-valuenow', pct);
+                        var icon = d.status === 'ok' ? '✓' : '✗';
+                        status.textContent = icon + ' ' + d.ticker + ' (' + d.done + '/' + d.total + ')';
+                    }
+                } else if (d.phase === 'accounts') {
+                    if (d.done === 0) {
+                        bar.style.width = '100%';
+                        bar.textContent = '100%';
+                        status.textContent = d.message;
+                    }
+                } else if (d.phase === 'complete') {
+                    es.close();
+                    bar.className = 'progress-bar bg-success';
+                    bar.textContent = 'Done';
+                    status.textContent = 'Done — reloading...';
+                    setTimeout(function () { location.reload(); }, 1200);
+                }
+            };
+
+            es.onerror = function () {
+                es.close();
+                bar.className = 'progress-bar bg-danger';
+                bar.textContent = 'Error';
+                status.textContent = 'Something went wrong. Try the Refresh menu link instead.';
+                btn.disabled = false;
+                btn.textContent = 'Refresh Prices';
+            };
         });
     });
 </script>

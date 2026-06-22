@@ -25,4 +25,5 @@ urlpatterns = [
     path('commands/', views.command, name='commandform'),
     path("stockholdingsummary/", views.StockHoldingView.as_view(), name='stockholdingsummary'),
     path("refresh/", views.recalc, name='refresh'),
+    path("refresh-stream/", views.refresh_stream, name='refresh_stream'),
 ]

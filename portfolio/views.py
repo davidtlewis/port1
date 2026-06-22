@@ -1,6 +1,7 @@
+import json
 from django.shortcuts import render
 from django.urls import path, reverse
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, StreamingHttpResponse
 from django.views.generic import DetailView
 from django.core.paginator import Paginator
 from django_tables2 import SingleTableView
@@ -172,6 +173,49 @@ def recalc(request):
     management.call_command('get_prices')
     management.call_command('refresh_accounts')
     return HttpResponseRedirect(reverse('index') )
+
+
+def _refresh_event_stream():
+    def sse(data):
+        return f"data: {json.dumps(data)}\n\n"
+
+    stock_list = list(Stock.objects.filter(active=True))
+    total = len(stock_list)
+    yield sse({"phase": "prices", "total": total, "done": 0,
+               "message": f"Fetching prices for {total} stocks..."})
+
+    for i, stock in enumerate(stock_list, 1):
+        try:
+            stock.refresh_value()
+            yield sse({"phase": "prices", "total": total, "done": i,
+                       "ticker": stock.nickname, "status": "ok"})
+        except Exception as e:
+            yield sse({"phase": "prices", "total": total, "done": i,
+                       "ticker": stock.nickname, "status": "error", "error": str(e)})
+
+    accounts = list(Account.objects.all())
+    acc_total = len(accounts)
+    yield sse({"phase": "accounts", "total": acc_total, "done": 0,
+               "message": f"Refreshing {acc_total} account values..."})
+
+    for i, account in enumerate(accounts, 1):
+        try:
+            account.refresh_value()
+            yield sse({"phase": "accounts", "total": acc_total, "done": i,
+                       "name": account.name, "status": "ok"})
+        except Exception as e:
+            yield sse({"phase": "accounts", "total": acc_total, "done": i,
+                       "name": account.name, "status": "error"})
+
+    yield sse({"phase": "complete"})
+
+
+@login_required(login_url='/account/login/')
+def refresh_stream(request):
+    response = StreamingHttpResponse(_refresh_event_stream(), content_type='text/event-stream')
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    return response
 
 def summary_old(request):
     a = Account.objects.filter(person__name = "david") | Account.objects.filter(person__name = "henri")
