@@ -4,6 +4,8 @@
 {% block content %}
 <h3>Daily Snapshots</h3>
 
+<p><strong>Table</strong> | <a href="{% url 'snapshot_chart' %}">Graph</a></p>
+
 {% if snapshots %}
 <table style="width: 100%;" class="table table-striped table-condensed">
     <thead>

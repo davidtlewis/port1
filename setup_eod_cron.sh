@@ -1,9 +1,16 @@
 #!/bin/bash
-# Setup script for End of Day portfolio snapshot cron job
+# Setup script for End of Day portfolio snapshot cron jobs
+#
+# Three passes, because different prices settle at different times:
+#   16:30 - FX rate only (GBPUSD / currency index are real-time, so grab them
+#           right at market close rather than 15 min later)
+#   16:45 - everything else (equities/ETFs/most funds, delayed ~15 min after close)
+#   17:00 - late-pricing funds (NAV published after close) - retries a few times
+#           if the price hasn't moved yet, then corrects the 16:45 snapshot in place
 
 echo "=== Portfolio End of Day Snapshot - Cron Setup ==="
 echo ""
-echo "This script will help you set up automated daily snapshots at 5pm."
+echo "This script will help you set up the automated daily snapshot cron jobs."
 echo ""
 
 # Check if running as the correct user
@@ -17,50 +24,60 @@ if [ "$USER" != "david" ]; then
     fi
 fi
 
-# Define the cron job
-CRON_JOB="45 16 * * 1-5 /home/david/port1/.venv/bin/python3 /home/david/port1/manage.py end_of_day_snapshot >> /home/david/port1/logs/eod_snapshot.log 2>&1"
+PYTHON=/home/david/port1/.venv/bin/python3
+MANAGE=/home/david/port1/manage.py
+LOG=/home/david/port1/logs/eod_snapshot.log
 
-echo "The following cron job will be added:"
+FX_JOB="30 16 * * 1-5 $PYTHON $MANAGE end_of_day_snapshot --fx-only >> $LOG 2>&1"
+MAIN_JOB="45 16 * * 1-5 $PYTHON $MANAGE end_of_day_snapshot >> $LOG 2>&1"
+LATE_JOB="0 17 * * 1-5 $PYTHON $MANAGE end_of_day_snapshot --late-only >> $LOG 2>&1"
+
+echo "The following cron jobs will be added:"
 echo ""
-echo "$CRON_JOB"
+echo "# Portfolio End of Day Snapshot - FX rate at market close"
+echo "$FX_JOB"
+echo "# Portfolio End of Day Snapshot - main refresh"
+echo "$MAIN_JOB"
+echo "# Portfolio End of Day Snapshot - late-pricing fund correction"
+echo "$LATE_JOB"
 echo ""
-echo "This will run at 5:00 PM Monday through Friday."
-echo ""
-read -p "Do you want to add this cron job? (y/n) " -n 1 -r
+read -p "Do you want to add these cron jobs? (y/n) " -n 1 -r
 echo
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    # Check if cron job already exists
+    # Remove any existing end_of_day_snapshot jobs (old single-job setup or a previous run of this script)
     if crontab -l 2>/dev/null | grep -q "end_of_day_snapshot"; then
         echo ""
-        echo "Warning: An end_of_day_snapshot cron job already exists!"
-        echo "Existing cron jobs:"
+        echo "Warning: existing end_of_day_snapshot cron job(s) found - these will be replaced:"
         crontab -l | grep "end_of_day_snapshot"
         echo ""
-        read -p "Do you want to replace it? (y/n) " -n 1 -r
+        read -p "Continue and replace them? (y/n) " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             echo "Cancelled."
             exit 0
         fi
-        # Remove existing job
-        crontab -l | grep -v "end_of_day_snapshot" | crontab -
+        crontab -l | grep -v "end_of_day_snapshot" | grep -v "Portfolio End of Day Snapshot" | crontab -
     fi
-    
-    # Add the new cron job
-    (crontab -l 2>/dev/null; echo "# Portfolio End of Day Snapshot at 5pm weekdays"; echo "$CRON_JOB") | crontab -
-    
+
+    (crontab -l 2>/dev/null
+     echo "# Portfolio End of Day Snapshot - FX rate at market close"
+     echo "$FX_JOB"
+     echo "# Portfolio End of Day Snapshot - main refresh"
+     echo "$MAIN_JOB"
+     echo "# Portfolio End of Day Snapshot - late-pricing fund correction"
+     echo "$LATE_JOB") | crontab -
+
     echo ""
-    echo "✓ Cron job added successfully!"
+    echo "✓ Cron jobs added successfully!"
     echo ""
     echo "Current crontab:"
     crontab -l
     echo ""
-    echo "Logs will be written to: /home/david/port1/logs/eod_snapshot.log"
+    echo "Logs will be written to: $LOG"
     echo ""
-    echo "To view logs: tail -f /home/david/port1/logs/eod_snapshot.log"
+    echo "To view logs: tail -f $LOG"
     echo "To edit crontab: crontab -e"
-    echo "To remove cron job: crontab -e (then delete the line)"
 else
     echo "Cancelled."
     exit 0
@@ -70,8 +87,10 @@ echo ""
 echo "=== Setup Complete ==="
 echo ""
 echo "Next steps:"
-echo "1. The snapshot will run automatically at 5pm on weekdays"
-echo "2. You can test it manually: python3 manage.py end_of_day_snapshot"
+echo "1. Snapshots will now be created/corrected automatically on weekdays"
+echo "2. Test manually if needed, e.g.:"
+echo "   python3 manage.py end_of_day_snapshot --fx-only"
+echo "   python3 manage.py end_of_day_snapshot"
+echo "   python3 manage.py end_of_day_snapshot --late-only"
 echo "3. View snapshots in Django admin: /admin/portfolio/dailysnapshot/"
 echo ""
-

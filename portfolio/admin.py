@@ -43,8 +43,8 @@ class HoldingAdmin(admin.ModelAdmin):
 
 class StockAdmin(admin.ModelAdmin):
     list_display = ('name', 'active', 'nickname', 'code', 'yahoo_code',
-                    'stock_type', 'stock_region', 'current_price', 'price_updated')
-    list_filter = ('stock_type', )
+                    'stock_type', 'stock_region', 'current_price', 'price_updated', 'late_pricing')
+    list_filter = ('stock_type', 'late_pricing')
 
 
 class PersonAdmin(admin.ModelAdmin):

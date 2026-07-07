@@ -14,12 +14,44 @@ class Command(BaseCommand):
             action='store_true',
             help='Enable verbose logging',
         )
-    
+        parser.add_argument(
+            '--type',
+            dest='stock_type',
+            choices=[choice[0] for choice in Stock.STOCK_TYPE],
+            help='Only refresh stocks of this type',
+        )
+        parser.add_argument(
+            '--exclude-type',
+            dest='exclude_type',
+            choices=[choice[0] for choice in Stock.STOCK_TYPE],
+            help='Skip stocks of this type',
+        )
+        parser.add_argument(
+            '--late-only',
+            action='store_true',
+            help='Only refresh stocks flagged as late-pricing',
+        )
+        parser.add_argument(
+            '--exclude-late',
+            action='store_true',
+            help='Skip stocks flagged as late-pricing',
+        )
+
     def handle(self, *args, **options):
         if options['verbose']:
             logging.getLogger('portfolio.scraper').setLevel(logging.DEBUG)
-        
+
         stock_list = Stock.objects.filter(active=True)
+
+        if options['stock_type']:
+            stock_list = stock_list.filter(stock_type=options['stock_type'])
+        if options['exclude_type']:
+            stock_list = stock_list.exclude(stock_type=options['exclude_type'])
+        if options['late_only']:
+            stock_list = stock_list.filter(late_pricing=True)
+        if options['exclude_late']:
+            stock_list = stock_list.exclude(late_pricing=True)
+
         total_number = len(stock_list)
         
         if total_number == 0:

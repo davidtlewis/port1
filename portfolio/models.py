@@ -83,7 +83,12 @@ class Stock(models.Model):
         ('yahoo', 'yahoo'),
     )
     scraper_source = models.CharField(max_length=5, choices=SCRAPER_SOURCE, default='ft')
-    
+    late_pricing = models.BooleanField(
+        default=False,
+        help_text="Price for the day is only published later (e.g. after 5pm) - excluded from the main "
+                   "end-of-day refresh and picked up by a later retry pass instead."
+    )
+
     active = models.BooleanField(default=True)
     current_price = models.DecimalField(max_digits=8, decimal_places=4)
     price_updated = models.DateTimeField(null=True)
@@ -332,19 +337,8 @@ class DailySnapshot(models.Model):
         return f"Portfolio Snapshot - {self.date}"
 
     @classmethod
-    def create_snapshot(cls, snapshot_date=None):
-        """
-        Create a daily snapshot for the given date (defaults to today).
-        Returns the created snapshot or None if it already exists.
-        """
-        if snapshot_date is None:
-            snapshot_date = date.today()
-
-        # Check if snapshot already exists for this date
-        if cls.objects.filter(date=snapshot_date).exists():
-            logger.warning(f"Snapshot for {snapshot_date} already exists")
-            return None
-
+    def _compute_values(cls):
+        """Compute current snapshot field values from live account/stock data."""
         # Get exchange rates
         try:
             usd_gbp_stock = Stock.objects.get(stock_type="curr", nickname="GBPUSD")
@@ -373,9 +367,7 @@ class DailySnapshot(models.Model):
         hd_usd = hd_gbp * gbp_usd_rate
         hd_currency_index = hd_gbp * currency_index_rate
 
-        # Create snapshot
-        snapshot = cls.objects.create(
-            date=snapshot_date,
+        return dict(
             total_value_gbp=total_gbp,
             total_value_usd=total_usd,
             total_value_currency_index=total_currency_index,
@@ -386,5 +378,40 @@ class DailySnapshot(models.Model):
             currency_index_rate=currency_index_rate,
         )
 
-        logger.info(f"Created daily snapshot for {snapshot_date}: GBP £{total_gbp:,.2f}, USD ${total_usd:,.2f}")
+    @classmethod
+    def create_snapshot(cls, snapshot_date=None):
+        """
+        Create a daily snapshot for the given date (defaults to today).
+        Returns the created snapshot or None if it already exists.
+        """
+        if snapshot_date is None:
+            snapshot_date = date.today()
+
+        # Check if snapshot already exists for this date
+        if cls.objects.filter(date=snapshot_date).exists():
+            logger.warning(f"Snapshot for {snapshot_date} already exists")
+            return None
+
+        values = cls._compute_values()
+        snapshot = cls.objects.create(date=snapshot_date, **values)
+
+        logger.info(f"Created daily snapshot for {snapshot_date}: "
+                    f"GBP £{values['total_value_gbp']:,.2f}, USD ${values['total_value_usd']:,.2f}")
+        return snapshot
+
+    @classmethod
+    def update_snapshot(cls, snapshot_date=None):
+        """
+        Recompute and overwrite the snapshot for the given date (creating it if missing).
+        Used for the later correction pass once late-pricing funds have published their
+        NAV for the day, so the initial (possibly stale) snapshot gets corrected in place.
+        """
+        if snapshot_date is None:
+            snapshot_date = date.today()
+
+        values = cls._compute_values()
+        snapshot, created = cls.objects.update_or_create(date=snapshot_date, defaults=values)
+
+        logger.info(f"{'Created' if created else 'Updated'} daily snapshot for {snapshot_date}: "
+                    f"GBP £{values['total_value_gbp']:,.2f}, USD ${values['total_value_usd']:,.2f}")
         return snapshot

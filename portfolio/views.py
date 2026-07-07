@@ -323,3 +323,15 @@ def daily_snapshots(request):
         'page_obj': page_obj,
         'is_paginated': page_obj.has_other_pages(),
     })
+
+
+def snapshot_chart(request):
+    snapshots = DailySnapshot.objects.order_by('date')
+
+    labels = [snapshot.date.isoformat() for snapshot in snapshots]
+    hd_value_gbp = [float(snapshot.hd_value_gbp) for snapshot in snapshots]
+
+    return render(request, 'portfolio/snapshot_chart.html', {
+        'labels': json.dumps(labels),
+        'hd_value_gbp': json.dumps(hd_value_gbp),
+    })
