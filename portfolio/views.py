@@ -11,7 +11,7 @@ from django_filters.views import FilterView
 from .models import Stock, Price, Holding, Transaction, Account, Dividend, DailySnapshot
 from .tables import StockTable, HoldingTable, TransactionTable, PriceTable, AccountTable, DividendTable, StockHoldingTable, StockListTable, HoldingTransactionsTable
 from django.db.models import Sum
-from .forms import TransactionForm, CommandForm
+from .forms import TransactionForm, HoldingTransactionForm, CommandForm
 from django.shortcuts import redirect
 from django.core import management
 from django.contrib.auth.decorators import login_required
@@ -55,6 +55,44 @@ class HoldingListViewFiltered(ExportMixin,SingleTableMixin, FilterView):
     template_name = 'portfolio/holding.html'
     filterset_class = HoldingByAccountFilter
     queryset  = Holding.objects.all().filter(current_value__gt=0)
+
+    def get_selected_account(self):
+        account_id = self.request.GET.get('account')
+        if account_id:
+            return Account.objects.filter(pk=account_id).first()
+        return None
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        account = self.get_selected_account()
+        context['selected_account'] = account
+        if account:
+            context['transaction_form'] = getattr(self, '_transaction_form', None) \
+                or HoldingTransactionForm(initial={'date': date.today()})
+        return context
+
+    def post(self, request, *args, **kwargs):
+        account = self.get_selected_account()
+        if not account:
+            return HttpResponseRedirect(request.get_full_path())
+
+        form = HoldingTransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.account = account
+            transaction.save()
+
+            holding, _ = Holding.objects.get_or_create(
+                account=account, stock=transaction.stock,
+                defaults={'book_cost': 0, 'volume': 0, 'current_value': 0},
+            )
+            holding.refresh_value()
+            account.refresh_value()
+
+            return HttpResponseRedirect(f"{reverse('holdingsfiltered')}?account={account.pk}")
+
+        self._transaction_form = form
+        return self.get(request, *args, **kwargs)
 
 class DividendListView(SingleTableMixin, FilterView):
     model = Dividend
