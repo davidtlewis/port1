@@ -31,6 +31,22 @@
     options: {
       responsive: true,
       scales: {
+        x: {
+          ticks: {
+            autoSkip: false,
+            maxRotation: 0,
+            minRotation: 0,
+            callback: function(value, index) {
+              const label = this.getLabelForValue(value);
+              const month = label.slice(0, 7);
+              const prevMonth = index === 0 ? null : this.getLabelForValue(value - 1).slice(0, 7);
+              if (month === prevMonth) {
+                return '';
+              }
+              return new Date(label).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+            }
+          }
+        },
         y: {
           ticks: {
             callback: function(value) {
