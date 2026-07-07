@@ -1,14 +1,52 @@
 {% extends 'portfolio/base.html' %}
 {% block content %}
-<div class="container">
-    <h1> Home</h1>
+<h3>Commands</h3>
+
+<div class="card mb-4">
+  <div class="card-header"><strong>Cash Balances</strong></div>
+  <div class="card-body">
+    {% if cash_holdings %}
     <form method="POST">
-        {%csrf_token%}
-        {{form.as_ul}}
-        <button type="submit">Submit </button>
-        
-    </form>  
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update_cash">
+      <table class="table table-striped table-condensed" style="max-width: 500px;">
+        <thead>
+          <tr>
+            <th>Account</th>
+            <th>Type</th>
+            <th>Value (£)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for holding in cash_holdings %}
+          <tr>
+            <td>{{ holding.account.name }}</td>
+            <td>{{ holding.stock.nickname }}</td>
+            <td>
+              <input type="number" step="1" name="cash_value_{{ holding.pk }}"
+                     value="{{ holding.current_value|floatformat:"0u" }}" class="form-control">
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="submit" class="btn btn-primary">Save Cash Balances</button>
+    </form>
+    {% else %}
+    <p>No cash holdings found.</p>
+    {% endif %}
+  </div>
 </div>
 
-
+<div class="card">
+  <div class="card-header"><strong>Run Commands</strong></div>
+  <div class="card-body">
+    <form method="POST">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="run_commands">
+      {{ form.as_p }}
+      <button type="submit" class="btn btn-secondary">Run</button>
+    </form>
+  </div>
+</div>
 {% endblock %}

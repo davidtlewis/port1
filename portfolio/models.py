@@ -88,6 +88,11 @@ class Stock(models.Model):
         help_text="Price for the day is only published later (e.g. after 5pm) - excluded from the main "
                    "end-of-day refresh and picked up by a later retry pass instead."
     )
+    is_cash = models.BooleanField(
+        default=False,
+        help_text="This is a £1-denominated cash placeholder (e.g. bank balance, P2P balance), not a "
+                   "traded holding - its holding volume is set directly rather than derived from transactions."
+    )
 
     active = models.BooleanField(default=True)
     current_price = models.DecimalField(max_digits=8, decimal_places=4)
@@ -271,25 +276,27 @@ class Holding(models.Model):
     def refresh_value(self):
         """
         Refresh holding value based on:
-        1. Current transaction history (bought - sold)
+        1. Current transaction history (bought - sold) - skipped for cash
+           holdings, whose volume is set directly rather than derived
         2. Current stock price
-        
+
         Optimized to use single aggregation query instead of N+1 queries.
         """
         try:
-            # Single efficient query to get buy/sell volumes
-            transactions = Transaction.objects.filter(
-                stock=self.stock,
-                account=self.account
-            ).aggregate(
-                bought=Sum('volume', filter=Q(transaction_type='buy')),
-                sold=Sum('volume', filter=Q(transaction_type='sell'))
-            )
-            
-            nett_volume_bought = transactions['bought'] or 0
-            nett_volume_sold = transactions['sold'] or 0
-            self.volume = nett_volume_bought - nett_volume_sold
-            
+            if not self.stock.is_cash:
+                # Single efficient query to get buy/sell volumes
+                transactions = Transaction.objects.filter(
+                    stock=self.stock,
+                    account=self.account
+                ).aggregate(
+                    bought=Sum('volume', filter=Q(transaction_type='buy')),
+                    sold=Sum('volume', filter=Q(transaction_type='sell'))
+                )
+
+                nett_volume_bought = transactions['bought'] or 0
+                nett_volume_sold = transactions['sold'] or 0
+                self.volume = nett_volume_bought - nett_volume_sold
+
             # Get fresh stock price from database
             stock = Stock.objects.get(pk=self.stock.id)
             self.current_value = Decimal(str(stock.current_price)) * Decimal(str(self.volume))

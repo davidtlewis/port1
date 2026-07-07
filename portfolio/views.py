@@ -17,6 +17,7 @@ from django.core import management
 from django.contrib.auth.decorators import login_required
 from .filters import HoldingByAccountFilter, HoldingByAccountFilter2, TransactionFilter, DividendByStockFilter, StockListFilter, AccountFilter
 from datetime import datetime, date
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import time
 from django_tables2 import RequestConfig
 
@@ -144,7 +145,29 @@ def transaction_new(request):
 
 @login_required(login_url='/account/login/')
 def command(request):
-    if request.method =='POST':
+    cash_holdings = Holding.objects.filter(stock__is_cash=True) \
+        .select_related('stock', 'account').order_by('account__name', 'stock__nickname')
+
+    if request.method == 'POST' and request.POST.get('action') == 'update_cash':
+        accounts_to_refresh = set()
+        for holding in cash_holdings:
+            raw_value = request.POST.get(f'cash_value_{holding.pk}')
+            if raw_value is None or raw_value == '':
+                continue
+            try:
+                new_value = Decimal(raw_value)
+            except InvalidOperation:
+                continue
+            holding.volume = int(new_value.to_integral_value(rounding=ROUND_HALF_UP))
+            holding.refresh_value()
+            accounts_to_refresh.add(holding.account)
+
+        for account in accounts_to_refresh:
+            account.refresh_value()
+
+        return HttpResponseRedirect(reverse('commandform'))
+
+    if request.method == 'POST':
         form = CommandForm(request.POST)
         if form.is_valid():
             do_get_prices = form.cleaned_data['do_get_prices']
@@ -160,13 +183,14 @@ def command(request):
                 management.call_command('refresh_accounts')
             if do_get_perf:
                 management.call_command('get_perf')
-        return HttpResponseRedirect(reverse('index') )
+        return HttpResponseRedirect(reverse('index'))
     else:
         form = CommandForm()
-        context = {
-            'form': form
-        }
-    return render(request, 'portfolio/commands.html', context)
+
+    return render(request, 'portfolio/commands.html', {
+        'form': form,
+        'cash_holdings': cash_holdings,
+    })
 
 @login_required(login_url='/account/login/')
 def recalc(request):
