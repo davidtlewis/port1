@@ -53,7 +53,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--wait-minutes',
             type=int,
-            default=15,
+            default=30,
             help='(--late-only) minutes to wait between price checks',
         )
 
