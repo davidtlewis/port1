@@ -9,18 +9,71 @@
 
 <p><a href="{% url 'daily_snapshots' %}">Table</a> | <strong>Graph</strong></p>
 
+<div class="btn-group mb-2" role="group" id="rangeSelector">
+  <button type="button" class="btn btn-outline-secondary" data-range="1M">1M</button>
+  <button type="button" class="btn btn-outline-secondary" data-range="3M">3M</button>
+  <button type="button" class="btn btn-outline-secondary" data-range="YTD">YTD</button>
+  <button type="button" class="btn btn-outline-secondary" data-range="1Y">1Y</button>
+  <button type="button" class="btn btn-outline-secondary active" data-range="All">All</button>
+</div>
+
 <canvas id="snapshotChart" height="100"></canvas>
 
 <script>
+  const allLabels = {{ labels|safe }};
+  const allValues = {{ hd_value_gbp|safe }};
+
+  function rangeStartDate(range) {
+    const now = new Date();
+    switch (range) {
+      case '1M': {
+        const d = new Date(now);
+        d.setMonth(d.getMonth() - 1);
+        return d;
+      }
+      case '3M': {
+        const d = new Date(now);
+        d.setMonth(d.getMonth() - 3);
+        return d;
+      }
+      case 'YTD':
+        return new Date(now.getFullYear(), 0, 1);
+      case '1Y': {
+        const d = new Date(now);
+        d.setFullYear(d.getFullYear() - 1);
+        return d;
+      }
+      default:
+        return null; // All
+    }
+  }
+
+  function filterByRange(range) {
+    const start = rangeStartDate(range);
+    if (!start) {
+      return { labels: allLabels, values: allValues };
+    }
+    const startStr = start.toISOString().slice(0, 10);
+    const labels = [];
+    const values = [];
+    for (let i = 0; i < allLabels.length; i++) {
+      if (allLabels[i] >= startStr) {
+        labels.push(allLabels[i]);
+        values.push(allValues[i]);
+      }
+    }
+    return { labels, values };
+  }
+
   const ctx = document.getElementById('snapshotChart');
 
-  new Chart(ctx, {
+  const chart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: {{ labels|safe }},
+      labels: allLabels,
       datasets: [{
         label: 'H&D Portfolio Value (£)',
-        data: {{ hd_value_gbp|safe }},
+        data: allValues,
         borderColor: '#2c7be5',
         backgroundColor: 'rgba(44, 123, 229, 0.1)',
         fill: true,
@@ -36,8 +89,20 @@
             autoSkip: false,
             maxRotation: 0,
             minRotation: 0,
-            callback: function(value, index) {
+            callback: function(value, index, ticks) {
               const label = this.getLabelForValue(value);
+              const total = ticks.length;
+
+              // Short ranges: label each day, or thin out to weekly if still crowded.
+              if (total <= 45) {
+                const step = total > 10 ? 7 : 1;
+                if (index % step !== 0) {
+                  return '';
+                }
+                return new Date(label).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+              }
+
+              // Longer ranges: one label per month.
               const month = label.slice(0, 7);
               const prevMonth = index === 0 ? null : this.getLabelForValue(value - 1).slice(0, 7);
               if (month === prevMonth) {
@@ -65,6 +130,19 @@
         }
       }
     }
+  });
+
+  document.getElementById('rangeSelector').addEventListener('click', function(event) {
+    const button = event.target.closest('button[data-range]');
+    if (!button) return;
+
+    this.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    button.classList.add('active');
+
+    const { labels, values } = filterByRange(button.dataset.range);
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = values;
+    chart.update();
   });
 </script>
 {% endblock %}
